@@ -1,0 +1,1074 @@
+% \iffalse meta-comment
+%
+% Copyright (C) 2026 by the banjofret authors
+%
+% This work may be distributed and/or modified under the conditions of
+% the LaTeX Project Public License (LPPL), either version 1.3c of this
+% license or (at your option) any later version.  The latest version of
+% this license is in https://www.latex-project.org/lppl.txt and version
+% 1.3c or later is part of all distributions of LaTeX version 2008-05-04
+% or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+%
+% \fi
+%
+% \iffalse
+%<*driver>
+\ProvidesFile{banjofret.dtx}[2026/09/28 v1.0.0 banjofret documentation driver]
+\documentclass[a4paper]{ltxdoc}
+\IfFileExists{lmodern.sty}{\usepackage[T1]{fontenc}\usepackage{lmodern}}{}
+\usepackage[a4paper,margin=2.3cm,marginparwidth=2cm]{geometry}
+\usepackage{banjofret}
+\usepackage{booktabs}
+\usepackage{pdflscape}
+\usepackage{listings}
+\usepackage[colorlinks,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\lstdefinestyle{bf}{language={[LaTeX]TeX},basicstyle=\ttfamily\small,
+  frame=single,rulecolor=\color{black!25},backgroundcolor=\color{black!3},
+  keywordstyle=\color{blue!55!black},commentstyle=\color{black!55},
+  xleftmargin=0pt,framexleftmargin=4pt,aboveskip=6pt,belowskip=4pt,
+  columns=fullflexible,keepspaces=true,showstringspaces=false}
+% Show a snippet (source listing) followed by its live result.
+\newcommand\BFexample[1]{%
+  \IfFileExists{examples/#1.tex}{\def\BFpath{examples/#1.tex}}{\def\BFpath{#1.tex}}%
+  \par\medskip\noindent
+  \begingroup\lstinputlisting[style=bf]{\BFpath}\endgroup
+  \MakePercentComment\input{\BFpath}\MakePercentIgnore
+  \par\medskip}
+\renewcommand\MacroFont{\fontencoding\encodingdefault\fontfamily\ttdefault\fontseries\mddefault\fontshape\updefault\footnotesize}
+\DisableCrossrefs
+\CodelineIndex
+\begin{document}
+  \DocInput{banjofret.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \CheckSum{0}
+%
+% \GetFileInfo{banjofret.dtx}
+%
+% \title{The \textsf{banjofret} package\\[2pt]
+%   \large Colour-coded fretboard diagrams for the 5-string banjo}
+% \author{banjofret contributors}
+% \date{Version 1.0.0 \,---\, 2026/09/28}
+% \maketitle
+%
+% \begin{abstract}
+% \noindent
+% \textsf{banjofret} typesets a clean, black-and-white diagram of a 5-string banjo
+% fretboard (24 frets, short fifth string starting at fret~5) with the chromatic
+% note name printed on every string/fret position.  You then \emph{paint} the
+% notes you care about --- single positions such as \verb|(3,5)|, whole
+% strings, whole frets, or every occurrence of a given note --- using a small
+% palette of minimalist colours chosen to support learning.  Note labels are
+% always drawn on top of the strings and of the colours.  It is built on
+% Ti\emph{k}Z and expl3 and works with pdf\LaTeX, Xe\LaTeX{} and Lua\LaTeX.
+% \end{abstract}
+%
+% \tableofcontents
+%
+% \section{Introduction}
+%
+% The goal of the package is to let you design \emph{your own} banjo diagrams ---
+% scales, chords, arpeggios, licks, positions --- with as little typing as
+% possible.  There is one template (the fretboard) and a handful of commands to
+% paint it:
+%
+% \begin{itemize}
+%   \item you always get the full chromatic fretboard, open-G tuned, in black and white;
+%   \item you paint by position, by string, by fret or by note name;
+%   \item colours are short names (\texttt{blue}, \texttt{root}, \texttt{amber}, \dots);
+%   \item note names are drawn last, so they stay legible over strings and colours.
+% \end{itemize}
+%
+% \subsection{Requirements}
+%
+% \LaTeX{} 2022-06-01 or newer (for the built-in \verb|\NewDocumentCommand|), plus
+% the packages \textsf{tikz}, \textsf{xcolor} and \textsf{l3keys2e}, all part of
+% every standard \TeX~Live and MiK\TeX{} installation.  The package loads
+% \textsf{tikz} (with the \texttt{calc} library) and \textsf{xcolor} itself.
+%
+% \subsection{Installation}
+%
+% Run \texttt{latex banjofret.ins} to generate \texttt{banjofret.sty}, and place
+% it (together with this PDF) in your local \texttt{texmf} tree, for instance
+% \texttt{TEXMF/tex/latex/banjofret/}.  For a one-off project it is enough to
+% keep \texttt{banjofret.sty} next to your \texttt{.tex} file.  On Overleaf,
+% upload \texttt{banjofret.sty} to the project.
+%
+% \section{Quick start}
+%
+% \begin{verbatim}
+% \documentclass{article}
+% \usepackage[landscape,margin=1.5cm]{geometry}
+% \usepackage{banjofret}
+% \begin{document}
+%
+% \begin{banjofret}[title={My first diagram}]
+%   \bfpaint{(3,5)}{blue}          % string 3, fret 5
+%   \bfpaintnote{G, B, D}{root}    % every G, B and D on the neck
+% \end{banjofret}
+%
+% \end{document}
+% \end{verbatim}
+%
+% With no painting commands at all you get the empty template with all
+% 24~frets.  It is wide, so landscape pages (or a 12-fret window, see
+% Section~\ref{sec:options}) are recommended:
+%
+% \begin{landscape}
+% \BFexample{snip-empty}
+% \end{landscape}
+%
+% \section{How the diagram is organised}
+% \label{sec:coords}
+%
+% \paragraph{Strings.}
+% Strings are numbered as on a banjo: string~1 is the thinnest of the four
+% full-length strings (high D) and string~4 the thickest (low D).  String~5
+% is the short drone string.  By default string~1 is drawn on top and string~5
+% at the bottom, like in banjo tablature (\texttt{string order=tab}); use
+% \texttt{string order=reverse} for the opposite.
+%
+% \paragraph{Frets.}
+% Fret~0 is the open string and is drawn in the column left of the nut (the
+% thick vertical bar).  Frets~1 to~24 follow.  Frets have equal width: the diagram
+% is a schematic and not a scale drawing.
+%
+% \paragraph{The fifth string.}
+% The fifth string starts at fret~5, where its tuning peg sits.  The disc at
+% position \verb|(5,5)| is the open fifth string (G); \verb|(5,6)| is G$\sharp$/A$\flat$, and so on.  Positions \verb|(5,0)|
+% to \verb|(5,4)| do not exist and are never drawn.
+%
+% \paragraph{Position notation.}
+% A position is written \verb|(string,fret)|.  Thus \verb|(3,5)| means string~3
+% at fret~5.  Several positions are separated by \emph{semicolons}:
+% \verb|(3,5); (2,1); (1,0)|.
+%
+% \paragraph{Default tuning.}
+% The default is standard open-G (G4--D3--G3--B3--D4):
+%
+% \begin{center}
+% \begin{tabular}{@{}cccccc@{}}
+% \toprule
+% String & 1 & 2 & 3 & 4 & 5 \\
+% \midrule
+% Note   & D & B & G & D & G \\
+% \bottomrule
+% \end{tabular}
+% \end{center}
+%
+% Other tunings can be selected with the \texttt{tuning} option (see below).
+%
+% \section{Painting commands}
+%
+% All painting commands must be used \emph{inside} a \texttt{banjofret}
+% environment.  If two commands paint the same position, the \emph{last} one wins,
+% so you can first paint a broad set of notes and then override individual
+% positions.  The last argument of every command is a colour
+% (Section~\ref{sec:colours}).
+%
+% \DescribeEnv{banjofret}
+% \begin{quote}
+% \verb|\begin{banjofret}[|\meta{options}\verb|]| \meta{painting commands}
+% \verb|\end{banjofret}|
+% \end{quote}
+% Typeset one fretboard diagram.  The optional argument takes the options of
+% Section~\ref{sec:options}.
+%
+% \DescribeMacro{\bfpaint}
+% \begin{quote}
+% \verb|\bfpaint{|\meta{positions}\verb|}{|\meta{colour}\verb|}|
+% \end{quote}
+% Paint one or more \verb|(string,fret)| positions.  Parentheses are optional;
+% positions are separated by semicolons.
+%
+% \BFexample{snip-paint}
+%
+% \DescribeMacro{\bfpaintnote}
+% \begin{quote}
+% \verb|\bfpaintnote{|\meta{notes}\verb|}{|\meta{colour}\verb|}|
+% \end{quote}
+% Paint \emph{every} occurrence of one or more notes on the neck.  Notes are
+% comma-separated names: a letter \texttt{A}--\texttt{G} followed by an optional
+% accidental, which can be written \texttt{s} or \verb|#| for sharp and
+% \texttt{b} for flat: \texttt{C}, \texttt{Fs}, \verb|F#|, \texttt{Bb}.  Enharmonic
+% spellings are equivalent (\texttt{Fs} and \texttt{Gb} paint the same discs).
+% This is the fastest way to draw scales and arpeggios:
+%
+% \BFexample{snip-gscale}
+%
+% \DescribeMacro{\bfpaintstring}
+% \begin{quote}
+% \verb|\bfpaintstring{|\meta{string}\verb|}{|\meta{frets}\verb|}{|\meta{colour}\verb|}|
+% \end{quote}
+% Paint a run of frets on one string.  The fret range is either a single fret
+% (\texttt{5}) or a range (\texttt{2-7}).
+%
+% \DescribeMacro{\bfpaintfret}
+% \begin{quote}
+% \verb|\bfpaintfret{|\meta{fret range}\verb|}{|\meta{colour}\verb|}|
+% \end{quote}
+% Paint the same fret, or a range of frets, on all strings.
+%
+% \BFexample{snip-ranges}
+%
+% \DescribeMacro{\bflegend}
+% \begin{quote}
+% \verb|\bflegend{|\meta{colour}\verb|=|\meta{label}\verb|, |\dots\verb|}|
+% \end{quote}
+% Add a legend line below the diagram.  Use braces around labels that contain
+% commas or equal signs.
+%
+% \section{Chords, scales and arpeggios}
+%
+% Chord shapes are most readable as position lists with the chord-tone colours
+% \texttt{root}, \texttt{third}, \texttt{fifth} and \texttt{seventh}:
+%
+% \BFexample{snip-cchord}
+%
+% Whole-neck views work best with \texttt{focus}, which greys out every note that
+% is not painted, so the eye finds the target notes at once:
+%
+% \BFexample{snip-triad}
+%
+% \section{Colours}
+% \label{sec:colours}
+%
+% The colour argument of every painting command can be one of the
+% palette names below.  The names are resolved to the package colours
+% \texttt{bf}\meta{name} (for instance \texttt{blue} $\to$ \texttt{bfblue}),
+% which can therefore also be used with any standard \texttt{xcolor} command.
+% Any other \textsf{xcolor} expression (\texttt{red!30}, a colour defined with
+% \verb|\definecolor|, \dots) is accepted as it is.
+%
+% \begin{center}
+% \renewcommand{\arraystretch}{1.25}
+% \begin{tabular}{@{}l c l l@{}}
+% \toprule
+% Name & Swatch & HTML & Suggested meaning \\
+% \midrule
+% \texttt{blue}    & \fcolorbox{black}{bfblue}{\rule{1cm}{0pt}\rule{0pt}{1.6ex}}   & \texttt{7DB4E8} & calm, main information\\
+% \texttt{green}   & \fcolorbox{black}{bfgreen}{\rule{1cm}{0pt}\rule{0pt}{1.6ex}}  & \texttt{86CFA3} & targets, resolution, ``safe'' notes\\
+% \texttt{amber}   & \fcolorbox{black}{bfamber}{\rule{1cm}{0pt}\rule{0pt}{1.6ex}}  & \texttt{F5C563} & attention, passing emphasis\\
+% \texttt{coral}   & \fcolorbox{black}{bfcoral}{\rule{1cm}{0pt}\rule{0pt}{1.6ex}}  & \texttt{F29E8E} & the root, the most important note\\
+% \texttt{violet}  & \fcolorbox{black}{bfviolet}{\rule{1cm}{0pt}\rule{0pt}{1.6ex}} & \texttt{B9A3E3} & colour tones, extensions\\
+% \texttt{teal}    & \fcolorbox{black}{bfteal}{\rule{1cm}{0pt}\rule{0pt}{1.6ex}}   & \texttt{7BCFCF} & second family of tones\\
+% \texttt{gray}    & \fcolorbox{black}{bfgray}{\rule{1cm}{0pt}\rule{0pt}{1.6ex}}   & \texttt{C9CED6} & neutral, context, ghost notes\\
+% \bottomrule
+% \end{tabular}
+% \end{center}
+%
+% \noindent Semantic aliases make diagrams self-consistent across a whole book:
+%
+% \begin{center}
+% \begin{tabular}{@{}l l @{\qquad} l l@{}}
+% \toprule
+% Alias & = & Alias & = \\
+% \midrule
+% \texttt{root}      & \texttt{coral}  & \texttt{seventh}   & \texttt{violet} \\
+% \texttt{third}     & \texttt{amber}  & \texttt{extension} & \texttt{teal}   \\
+% \texttt{fifth}     & \texttt{blue}   & \texttt{passing}   & \texttt{gray}   \\
+% \texttt{target}    & \texttt{green}  &                    &                 \\
+% \bottomrule
+% \end{tabular}
+% \end{center}
+%
+% \paragraph{Design rationale.}
+% The palette follows a few well-established guidelines from the literature on
+% multimedia learning and colour accessibility (they are guidelines, not laws):
+% (1)~a \emph{small} set of hues, so that the meaning of each colour can be
+% remembered; (2)~one \emph{consistent} meaning per colour --- the warm coral is
+% kept for the most salient item, the root, while cool colours carry supporting
+% information; (3)~soft, mid-light tones with black text, which keeps contrast
+% high and the page calm, and avoids the visual vibration of pure primaries;
+% (4)~hues that stay distinguishable under the common forms of colour-vision
+% deficiency; and (5)~redundant coding: the note \emph{name} is always printed
+% inside the disc and a legend can be added, so colour is never the only channel.
+%
+% \paragraph{Your own colours.}
+% Define them with \textsf{xcolor} and use them by name:
+% \begin{quote}
+% \verb|\definecolor{mine}{HTML}{FFB3C1}|\\
+% \verb|\bfpaint{(3,5)}{mine}|
+% \end{quote}
+%
+% \section{Options}
+% \label{sec:options}
+%
+% Options are given in the optional argument of the environment.  To change a
+% default for the whole document, pass them as package options, for example
+% \verb|\usepackage[last fret=12]{banjofret}|, or set them in the preamble with:
+%
+% \DescribeMacro{\banjofretset}
+% \begin{quote}
+% \verb|\banjofretset{|\meta{options}\verb|}|
+% \end{quote}
+%
+% \begin{center}
+% \renewcommand{\arraystretch}{1.2}
+% \begin{tabular}{@{}l l p{7.6cm}@{}}
+% \toprule
+% Option & Default & Meaning\\
+% \midrule
+% \texttt{first fret}   & \texttt{0} & First fret shown. \texttt{0} shows the open-string column and the nut.\\
+% \texttt{last fret}    & \texttt{24} & Last fret shown (maximum 24).\\
+% \texttt{width}        & \verb|\linewidth| & Total width of the diagram; any \TeX{} length.\\
+% \texttt{accidentals}  & \texttt{both} & \texttt{sharp} (F$\sharp$), \texttt{flat} (G$\flat$) or \texttt{both} (stacked, F$\sharp$ over G$\flat$).\\
+% \texttt{tuning}       & \texttt{D,B,G,D,G} & Five notes, string~1 to string~5. Write accidentals with \texttt{s}/\texttt{b}, e.g. \texttt{D,C,G,C,G}.\\
+% \texttt{string order} & \texttt{tab} & \texttt{tab}: string~1 on top. \texttt{reverse}: string~5 on top.\\
+% \texttt{left handed}  & false & Mirror the diagram (nut on the right).\\
+% \texttt{string labels} & true & Show the string numbers 1--5.\\
+% \texttt{fret numbers} & true & Show the fret numbers under the board.\\
+% \texttt{markers}      & true & Show the inlay dots (frets 5, 7, 10, 12, 15, 17, 19, 22, 24).\\
+% \texttt{focus}        & false & Grey out the unpainted notes when something is painted.\\
+% \texttt{title}        & empty & Title printed above the diagram.\\
+% \texttt{note font}    & \verb|\sffamily\bfseries| & Font commands for the note names.\\
+% \bottomrule
+% \end{tabular}
+% \end{center}
+%
+% Boolean options can be written without a value (\texttt{focus} means
+% \texttt{focus=true}).
+%
+% \BFexample{snip-flat}
+% \BFexample{snip-lefty}
+%
+% \section{Tips and troubleshooting}
+%
+% \begin{itemize}
+%   \item \textbf{Page size.}  24~frets with stacked note names are readable in
+%     landscape (\texttt{pdflscape}, or a landscape \texttt{geometry}).  On
+%     portrait pages use a window such as \texttt{last fret=12}, or
+%     \texttt{accidentals=sharp}.
+%   \item \textbf{Font size warnings.}  The note labels are scaled to the disc.
+%     With the default Computer Modern fonts in OT1 encoding \LaTeX{} may
+%     warn that some sizes are unavailable.  Loading \textsf{lmodern} (with
+%     \textsf{fontenc}\,\texttt{T1}) or any scalable font family removes them.
+%   \item \textbf{A \texttt{\#} inside another macro.}  In \verb|\bfpaintnote| a
+%     literal \verb|#| works in the document body, but inside macro definitions
+%     write \texttt{s} instead (\texttt{Fs}).
+%   \item \textbf{Errors.}  Invalid positions, unknown note names and unknown
+%     options give clear error messages and the offending item is ignored.
+%   \item \textbf{Engines.}  Tested with pdf\LaTeX, Xe\LaTeX{} and Lua\LaTeX.
+%   \item \textbf{Combining with text.}  The environment produces a centred block
+%     and can be put in a \texttt{figure} float.
+% \end{itemize}
+%
+% \section{Roadmap}
+%
+% Ideas for future versions: vertical (chord-box) orientation, fingering
+% numbers inside the discs, scale-degree labels instead of note names, and
+% ready-made scale and chord macros.  Contributions are welcome.
+%
+% \StopEventually{}
+%
+% \section{Implementation}
+%
+% This section documents the source code.  All internal functions and
+% variables use the prefix \texttt{bfret} following the \textsf{expl3}
+% conventions.  Diagrams are drawn at the end of the environment, so that the
+% drawing order is guaranteed: board and frets, then strings, and finally the
+% coloured discs with their note names.
+%
+%
+%
+% \subsection{Source code}
+%
+% \subsubsection{Package identification and dependencies}
+%
+%    \begin{macrocode}
+%<*package>
+%<package>\NeedsTeXFormat{LaTeX2e}[2022-06-01]
+\RequirePackage{expl3}
+\ProvidesExplPackage{banjofret}{2026/09/28}{1.0.0}
+  {Five-string banjo fretboard diagrams with colour-coded chromatic notes}
+\@ifl@t@r\fmtversion{2022-06-01}{}
+  {\PackageError{banjofret}{LaTeX~2022-06-01~or~newer~is~required}{Please~update~your~TeX~distribution.}}
+\ExplSyntaxOff
+\RequirePackage{l3keys2e}
+\RequirePackage{xcolor}
+\RequirePackage{tikz}
+\usetikzlibrary{calc}
+\ExplSyntaxOn
+%    \end{macrocode}
+%
+% \subsubsection{Messages}
+%
+%    \begin{macrocode}
+\msg_new:nnn { banjofret } { unknown-key }
+  { Unknown~option~'#1'. }
+\msg_new:nnnn { banjofret } { outside-env }
+  { #1~can~only~be~used~inside~a~'banjofret'~environment. }
+  { Put~the~command~between~begin\{banjofret\}~and~end\{banjofret\}. }
+\msg_new:nnnn { banjofret } { bad-note }
+  { Unknown~note~name~'#1'. }
+  { Use~a~letter~A--G~optionally~followed~by~\iow_char:N\# ~or~s~(sharp)~or~b~(flat),~e.g.~C,~Fs,~Bb. }
+\msg_new:nnnn { banjofret } { bad-position }
+  { Invalid~position~(#1,#2)~ignored. }
+  { String~must~be~1--5,~fret~0--24;~string~5~only~exists~from~fret~5~onwards. }
+\msg_new:nnnn { banjofret } { bad-pair }
+  { Cannot~read~'#1'~as~(string,fret). }
+  { Write~positions~as~(string,fret),~separated~by~semicolons,~e.g.~(3,5);(2,1). }
+\msg_new:nnnn { banjofret } { bad-range }
+  { Fret~window~must~satisfy~0<=first<=last<=24. }
+  { Falling~back~to~the~full~fretboard~(0--24). }
+\msg_new:nnnn { banjofret } { bad-tuning }
+  { The~'tuning'~option~needs~exactly~five~notes~(strings~1--5). }
+  { Falling~back~to~the~standard~open-G~tuning~D,B,G,D,G. }
+\msg_new:nnn { banjofret } { legend-key-only }
+  { Legend~entry~'#1'~has~no~label~and~was~ignored.~Use~colour=label. }
+%    \end{macrocode}
+%
+% \subsubsection{Colour palette}
+%
+%    \begin{macrocode}
+\definecolor{bfblue}{HTML}{7DB4E8}
+\definecolor{bfgreen}{HTML}{86CFA3}
+\definecolor{bfamber}{HTML}{F5C563}
+\definecolor{bfcoral}{HTML}{F29E8E}
+\definecolor{bfviolet}{HTML}{B9A3E3}
+\definecolor{bfteal}{HTML}{7BCFCF}
+\definecolor{bfgray}{HTML}{C9CED6}
+\colorlet{bfroot}{bfcoral}
+\colorlet{bfthird}{bfamber}
+\colorlet{bffifth}{bfblue}
+\colorlet{bfseventh}{bfviolet}
+\colorlet{bfextension}{bfteal}
+\colorlet{bftarget}{bfgreen}
+\colorlet{bfpassing}{bfgray}
+%    \end{macrocode}
+%
+% \subsubsection{Variables and constants}
+%
+%    \begin{macrocode}
+\int_new:N \l__bfret_first_int
+\int_new:N \l__bfret_last_int
+\int_new:N \l__bfret_acc_int
+\int_new:N \l__bfret_order_int
+\int_new:N \l__bfret_dir_int
+\int_new:N \l__bfret_xoff_int
+\int_new:N \l__bfret_cols_int
+\int_new:N \l__bfret_tmpa_int
+\int_new:N \l__bfret_tmpc_int
+\int_new:N \l__bfret_hash_int
+\int_new:N \l__bfret_count_int
+\bool_new:N \l__bfret_inenv_bool
+\bool_new:N \l__bfret_open_bool
+\bool_new:N \l__bfret_lefty_bool
+\bool_new:N \l__bfret_slabels_bool
+\bool_new:N \l__bfret_fnumbers_bool
+\bool_new:N \l__bfret_markers_bool
+\bool_new:N \l__bfret_focus_bool
+\dim_new:N \l__bfret_w_dim
+\dim_new:N \l__bfret_ss_dim
+\dim_new:N \l__bfret_r_dim
+\dim_new:N \l__bfret_d_dim
+\dim_new:N \l__bfret_hh_dim
+\dim_new:N \l__bfret_left_dim
+\dim_new:N \l__bfret_right_dim
+\dim_new:N \l__bfret_total_dim
+\dim_new:N \l__bfret_margin_dim
+\dim_new:N \l__bfret_fsa_dim
+\dim_new:N \l__bfret_fsb_dim
+\dim_new:N \l__bfret_xa_dim
+\dim_new:N \l__bfret_ya_dim
+\dim_new:N \l__bfret_xb_dim
+\dim_new:N \l__bfret_yb_dim
+\dim_new:N \l__bfret_tmpa_dim
+\dim_new:N \l__bfret_tmpb_dim
+\dim_new:N \l__bfret_ybot_dim
+\tl_new:N \l__bfret_width_tl
+\tl_new:N \l__bfret_title_tl
+\tl_new:N \l__bfret_notefont_tl
+\tl_new:N \l__bfret_tmpa_tl
+\tl_new:N \l__bfret_key_tl
+\tl_new:N \l__bfret_col_tl
+\tl_new:N \l__bfret_draw_tl
+\tl_new:N \l__bfret_txt_tl
+\str_new:N \l__bfret_tmpa_str
+\str_new:N \l__bfret_head_str
+\str_new:N \l__bfret_orig_str
+\str_new:N \l__bfret_tail_str
+\clist_new:N \l__bfret_tuning_clist
+\clist_new:N \l__bfret_names_clist
+\seq_new:N \l__bfret_tuning_seq
+\seq_new:N \l__bfret_legend_seq
+\seq_new:N \l__bfret_tmpa_seq
+\seq_new:N \l__bfret_tmpb_seq
+\prop_new:N \l__bfret_paint_prop
+\cs_new:Npn \__bfret_s: { \ensuremath { \sharp } }
+\cs_new:Npn \__bfret_f: { \ensuremath { \flat } }
+\seq_const_from_clist:Nn \c__bfret_sharp_seq
+  { C , C\__bfret_s: , D , D\__bfret_s: , E , F , F\__bfret_s: , G , G\__bfret_s: , A , A\__bfret_s: , B }
+\seq_const_from_clist:Nn \c__bfret_flat_seq
+  { C , D\__bfret_f: , D , E\__bfret_f: , E , F , G\__bfret_f: , G , A\__bfret_f: , A , B\__bfret_f: , B }
+\clist_const:Nn \c__bfret_natural_clist { 0 , 2 , 4 , 5 , 7 , 9 , 11 }
+\clist_const:Nn \c__bfret_stringwidth_clist { 0.4pt , 0.55pt , 0.75pt , 1pt , 0.4pt }
+\clist_const:Nn \c__bfret_markers_clist { 5 , 7 , 10 , 12 , 15 , 17 , 19 , 22 , 24 }
+%    \end{macrocode}
+%
+% \subsubsection{Options}
+%
+%    \begin{macrocode}
+\keys_define:nn { banjofret }
+  {
+    first~fret     .int_set:N  = \l__bfret_first_int ,
+    first~fret     .initial:n  = 0 ,
+    last~fret      .int_set:N  = \l__bfret_last_int ,
+    last~fret      .initial:n  = 24 ,
+    width          .tl_set:N   = \l__bfret_width_tl ,
+    width          .initial:n  = \linewidth ,
+    accidentals    .choices:nn = { sharp , flat , both }
+      { \int_set:Nn \l__bfret_acc_int { \l_keys_choice_int } } ,
+    accidentals    .initial:n  = both ,
+    tuning         .clist_set:N = \l__bfret_tuning_clist ,
+    tuning         .initial:n  = { D , B , G , D , G } ,
+    string~order   .choices:nn = { tab , reverse }
+      { \int_set:Nn \l__bfret_order_int { 3 - 2 * \l_keys_choice_int } } ,
+    string~order   .initial:n  = tab ,
+    left~handed    .bool_set:N = \l__bfret_lefty_bool ,
+    left~handed    .initial:n  = false ,
+    string~labels  .bool_set:N = \l__bfret_slabels_bool ,
+    string~labels  .initial:n  = true ,
+    fret~numbers   .bool_set:N = \l__bfret_fnumbers_bool ,
+    fret~numbers   .initial:n  = true ,
+    markers        .bool_set:N = \l__bfret_markers_bool ,
+    markers        .initial:n  = true ,
+    focus          .bool_set:N = \l__bfret_focus_bool ,
+    focus          .initial:n  = false ,
+    title          .tl_set:N   = \l__bfret_title_tl ,
+    title          .initial:n  = { } ,
+    note~font      .tl_set:N   = \l__bfret_notefont_tl ,
+    note~font      .initial:n  = { \sffamily \bfseries } ,
+    unknown        .code:n     =
+      { \msg_error:nnx { banjofret } { unknown-key } { \l_keys_key_str } }
+  }
+\ProcessKeysOptions { banjofret }
+\NewDocumentCommand \banjofretset { m }
+  { \keys_set:nn { banjofret } {#1} }
+%    \end{macrocode}
+%
+% \subsubsection{Note names and pitch classes}
+%
+%    \begin{macrocode}
+\cs_new_protected:Npn \__bfret_note_to_pc:nN #1#2
+  {
+    \str_set:Nx \l__bfret_tmpa_str { \tl_to_str:n {#1} }
+    \str_remove_all:Nn \l__bfret_tmpa_str { ~ }
+    \str_set_eq:NN \l__bfret_orig_str \l__bfret_tmpa_str
+    \str_set:Nx \l__bfret_head_str { \str_head:N \l__bfret_tmpa_str }
+    \str_set:Nx \l__bfret_tail_str { \str_tail:N \l__bfret_tmpa_str }
+    \exp_args:NV \str_case:nnF \l__bfret_head_str
+      {
+        { C } { \int_set:Nn #2 { 0 } }
+        { D } { \int_set:Nn #2 { 2 } }
+        { E } { \int_set:Nn #2 { 4 } }
+        { F } { \int_set:Nn #2 { 5 } }
+        { G } { \int_set:Nn #2 { 7 } }
+        { A } { \int_set:Nn #2 { 9 } }
+        { B } { \int_set:Nn #2 { 11 } }
+      }
+      {
+        \msg_error:nnV { banjofret } { bad-note } \l__bfret_orig_str
+        \int_set:Nn #2 { 0 }
+      }
+    \int_zero:N \l__bfret_hash_int
+    \str_map_inline:Nn \l__bfret_tail_str
+      {
+        \str_case:nnF {##1}
+          {
+            { s } { \int_incr:N #2 }
+            { b } { \int_decr:N #2 }
+          }
+          {
+            \str_if_eq:nVTF {##1} \c_hash_str
+              { \int_incr:N \l__bfret_hash_int }
+              { \msg_error:nnV { banjofret } { bad-note } \l__bfret_orig_str }
+          }
+      }
+    % A '#' character is doubled by \tl_to_str:n, hence the division by two.
+    \int_add:Nn #2 { \int_div_truncate:nn { \l__bfret_hash_int } { 2 } }
+    \int_set:Nn #2 { \int_mod:nn { \int_mod:nn {#2} { 12 } + 12 } { 12 } }
+  }
+\cs_new:Npn \__bfret_pc:nn #1#2
+  {
+    \int_mod:nn
+      { \seq_item:Nn \l__bfret_tuning_seq {#1} + #2 - \int_compare:nTF { #1 = 5 } { 5 } { 0 } }
+      { 12 }
+  }
+\cs_new_protected:Npn \__bfret_parse_tuning:
+  {
+    \seq_clear:N \l__bfret_tuning_seq
+    \clist_map_inline:Nn \l__bfret_tuning_clist
+      {
+        \__bfret_note_to_pc:nN {##1} \l__bfret_tmpc_int
+        \seq_put_right:NV \l__bfret_tuning_seq \l__bfret_tmpc_int
+      }
+    \int_compare:nF { \seq_count:N \l__bfret_tuning_seq = 5 }
+      {
+        \msg_error:nn { banjofret } { bad-tuning }
+        \seq_set_split:Nnn \l__bfret_tuning_seq { , } { 2 , 11 , 7 , 2 , 7 }
+      }
+  }
+%    \end{macrocode}
+%
+% \subsubsection{Colour resolution}
+%
+%    \begin{macrocode}
+\cs_new:Npn \__bfret_color:n #1
+  {
+    \cs_if_exist:cTF { \c_backslash_str color@bf#1 } { bf#1 } {#1}
+  }
+%    \end{macrocode}
+%
+% \subsubsection{Painting commands}
+%
+%    \begin{macrocode}
+\prg_new_conditional:Npnn \__bfret_valid:nn #1#2 { p , T , F , TF }
+  {
+    \bool_if:nTF
+      {
+        \int_compare_p:nNn {#1} > { 0 } && \int_compare_p:nNn {#1} < { 6 } &&
+        \int_compare_p:nNn {#2} > { -1 } && \int_compare_p:nNn {#2} < { 25 } &&
+        ( \int_compare_p:nNn {#1} < { 5 } || \int_compare_p:nNn {#2} > { 4 } )
+      }
+      { \prg_return_true: }
+      { \prg_return_false: }
+  }
+\cs_new_protected:Npn \__bfret_check_env:n #1
+  {
+    \bool_if:NF \l__bfret_inenv_bool
+      { \msg_error:nnn { banjofret } { outside-env } {#1} }
+  }
+\cs_new_protected:Npn \__bfret_put:nnn #1#2#3
+  {
+    \__bfret_valid:nnT {#1} {#2}
+      {
+        \tl_set:Nx \l__bfret_key_tl { \int_eval:n {#1} , \int_eval:n {#2} }
+        \prop_put:NVn \l__bfret_paint_prop \l__bfret_key_tl {#3}
+      }
+  }
+\cs_new_protected:Npn \__bfret_paint_pair:nn #1#2
+  {
+    \tl_if_blank:nF {#1}
+      {
+        \tl_set:Nn \l__bfret_tmpa_tl {#1}
+        \tl_remove_all:Nn \l__bfret_tmpa_tl { ( }
+        \tl_remove_all:Nn \l__bfret_tmpa_tl { ) }
+        \seq_set_split:NnV \l__bfret_tmpb_seq { , } \l__bfret_tmpa_tl
+        \int_compare:nTF { \seq_count:N \l__bfret_tmpb_seq = 2 }
+          {
+            \__bfret_valid:nnTF
+              { \seq_item:Nn \l__bfret_tmpb_seq { 1 } }
+              { \seq_item:Nn \l__bfret_tmpb_seq { 2 } }
+              {
+                \__bfret_put:nnn
+                  { \seq_item:Nn \l__bfret_tmpb_seq { 1 } }
+                  { \seq_item:Nn \l__bfret_tmpb_seq { 2 } }
+                  {#2}
+              }
+              {
+                \msg_error:nnxx { banjofret } { bad-position }
+                  { \seq_item:Nn \l__bfret_tmpb_seq { 1 } }
+                  { \seq_item:Nn \l__bfret_tmpb_seq { 2 } }
+              }
+          }
+          { \msg_error:nnn { banjofret } { bad-pair } {#1} }
+      }
+  }
+\NewDocumentCommand \bfpaint { m m }
+  {
+    \__bfret_check_env:n { \bfpaint }
+    \seq_set_split:Nnn \l__bfret_tmpa_seq { ; } {#1}
+    \seq_map_inline:Nn \l__bfret_tmpa_seq
+      { \__bfret_paint_pair:nn {##1} {#2} }
+  }
+\cs_new_protected:Npn \__bfret_range:nNN #1#2#3
+  {
+    \seq_set_split:Nnn \l__bfret_tmpb_seq { - } {#1}
+    \int_set:Nn #2 { \seq_item:Nn \l__bfret_tmpb_seq { 1 } }
+    \int_compare:nTF { \seq_count:N \l__bfret_tmpb_seq > 1 }
+      { \int_set:Nn #3 { \seq_item:Nn \l__bfret_tmpb_seq { 2 } } }
+      { \int_set_eq:NN #3 #2 }
+  }
+\int_new:N \l__bfret_ra_int
+\int_new:N \l__bfret_rb_int
+\NewDocumentCommand \bfpaintstring { m m m }
+  {
+    \__bfret_check_env:n { \bfpaintstring }
+    \__bfret_range:nNN {#2} \l__bfret_ra_int \l__bfret_rb_int
+    \int_step_inline:nnn { \l__bfret_ra_int } { \l__bfret_rb_int }
+      { \__bfret_put:nnn {#1} {##1} {#3} }
+  }
+\NewDocumentCommand \bfpaintfret { m m }
+  {
+    \__bfret_check_env:n { \bfpaintfret }
+    \__bfret_range:nNN {#1} \l__bfret_ra_int \l__bfret_rb_int
+    \int_step_inline:nnn { \l__bfret_ra_int } { \l__bfret_rb_int }
+      {
+        \int_step_inline:nn { 5 }
+          { \__bfret_put:nnn { ####1 } { ##1 } {#2} }
+      }
+  }
+\cs_new_protected:Npn \__bfret_paint_pc_string:nnn #1#2#3
+  {
+    \int_step_inline:nnn { 0 } { 24 }
+      {
+        \int_compare:nT { \__bfret_pc:nn {#3} { ##1 } = #1 }
+          { \__bfret_put:nnn {#3} { ##1 } {#2} }
+      }
+  }
+\NewDocumentCommand \bfpaintnote { m m }
+  {
+    \__bfret_check_env:n { \bfpaintnote }
+    % Convert to a string first so that a literal '#' in the input is harmless.
+    \clist_set:Nx \l__bfret_names_clist { \tl_to_str:n {#1} }
+    \clist_map_inline:Nn \l__bfret_names_clist
+      {
+        \__bfret_note_to_pc:nN { ##1 } \l__bfret_tmpc_int
+        \int_step_inline:nn { 5 }
+          {
+            \__bfret_paint_pc_string:nnn
+              { \int_use:N \l__bfret_tmpc_int } {#2} { ####1 }
+          }
+      }
+  }
+\cs_new_protected:Npn \__bfret_legend_key:n #1
+  { \msg_warning:nnn { banjofret } { legend-key-only } {#1} }
+\cs_new_protected:Npn \__bfret_legend_pair:nn #1#2
+  { \seq_put_right:Nn \l__bfret_legend_seq { { #1 } { #2 } } }
+\NewDocumentCommand \bflegend { m }
+  {
+    \__bfret_check_env:n { \bflegend }
+    \seq_clear:N \l__bfret_legend_seq
+    \keyval_parse:NNn \__bfret_legend_key:n \__bfret_legend_pair:nn {#1}
+  }
+%    \end{macrocode}
+%
+% \subsubsection{Geometry helpers}
+%
+%    \begin{macrocode}
+\cs_new:Npn \__bfret_xpos:n #1
+  {
+    \dim_eval:n
+      {
+        ( \int_eval:n { #1 - \l__bfret_xoff_int } \l__bfret_w_dim - 0.5 \l__bfret_w_dim )
+        * \l__bfret_dir_int
+      }
+  }
+\cs_new:Npn \__bfret_ypos:n #1
+  { \dim_eval:n { \int_eval:n { \l__bfret_order_int * ( 3 - #1 ) } \l__bfret_ss_dim } }
+\cs_new_protected:Npn \__bfret_seg:nnnnn #1#2#3#4#5
+  {
+    \dim_set:Nn \l__bfret_xa_dim { ( #1 ) * \l__bfret_dir_int }
+    \dim_set:Nn \l__bfret_ya_dim { #2 }
+    \dim_set:Nn \l__bfret_xb_dim { ( #3 ) * \l__bfret_dir_int }
+    \dim_set:Nn \l__bfret_yb_dim { #4 }
+    \draw [ #5 ]
+      ( \l__bfret_xa_dim , \l__bfret_ya_dim ) --
+      ( \l__bfret_xb_dim , \l__bfret_yb_dim ) ;
+  }
+\cs_new_protected:Npn \__bfret_fs:n #1
+  { \exp_args:Nx \__bfret_fs_aux:n { \dim_to_decimal_in_unit:nn {#1} { 1pt } } }
+\cs_new_protected:Npn \__bfret_fs_aux:n #1
+  { \fontsize {#1} {#1} \selectfont }
+\cs_new_protected:Npn \__bfret_setup_geometry:
+  {
+    \bool_if:nF
+      {
+        \int_compare_p:nNn { \l__bfret_first_int } > { -1 } &&
+        \int_compare_p:nNn { \l__bfret_first_int } < { 25 } &&
+        \int_compare_p:nNn { \l__bfret_last_int } > { \l__bfret_first_int - 1 } &&
+        \int_compare_p:nNn { \l__bfret_last_int } < { 25 }
+      }
+      {
+        \msg_error:nn { banjofret } { bad-range }
+        \int_set:Nn \l__bfret_first_int { 0 }
+        \int_set:Nn \l__bfret_last_int { 24 }
+      }
+    \int_set:Nn \l__bfret_xoff_int { \int_max:nn { \l__bfret_first_int - 1 } { 0 } }
+    \bool_set:Nn \l__bfret_open_bool
+      { \int_compare_p:nNn { \l__bfret_first_int } = { 0 } }
+    \int_set:Nn \l__bfret_cols_int
+      { \l__bfret_last_int - \l__bfret_xoff_int + \bool_if:NTF \l__bfret_open_bool { 1 } { 0 } }
+    \int_set:Nn \l__bfret_dir_int { \bool_if:NTF \l__bfret_lefty_bool { -1 } { 1 } }
+    \dim_set:Nn \l__bfret_total_dim { \l__bfret_width_tl }
+    \dim_set:Nn \l__bfret_margin_dim
+      { \bool_if:NTF \l__bfret_slabels_bool { 14pt } { 0pt } }
+    \dim_set:Nn \l__bfret_w_dim
+      { ( \l__bfret_total_dim - \l__bfret_margin_dim ) / \l__bfret_cols_int }
+    \dim_set:Nn \l__bfret_ss_dim
+      { \dim_min:nn { 0.8 \l__bfret_w_dim } { 26pt } }
+    \dim_set:Nn \l__bfret_r_dim
+      { \dim_min:nn { \l__bfret_w_dim } { \l__bfret_ss_dim } }
+    \dim_set:Nn \l__bfret_r_dim { 0.44 \l__bfret_r_dim }
+    \dim_set:Nn \l__bfret_d_dim { 2 \l__bfret_r_dim }
+    \dim_set:Nn \l__bfret_fsa_dim { 1.15 \l__bfret_r_dim }
+    \dim_set:Nn \l__bfret_fsb_dim { 0.8 \l__bfret_r_dim }
+    \dim_set:Nn \l__bfret_hh_dim { 2.6 \l__bfret_ss_dim }
+    \dim_set:Nn \l__bfret_left_dim
+      { \bool_if:NTF \l__bfret_open_bool { - \l__bfret_w_dim } { 0pt } }
+    \dim_set:Nn \l__bfret_right_dim
+      { \int_eval:n { \l__bfret_last_int - \l__bfret_xoff_int } \l__bfret_w_dim }
+  }
+%    \end{macrocode}
+%
+% \subsubsection{Drawing the fretboard}
+%
+%    \begin{macrocode}
+\cs_new_protected:Npn \__bfret_draw_fretlines:
+  {
+    \int_step_inline:nnn { \l__bfret_xoff_int } { \l__bfret_last_int }
+      {
+        \dim_set:Nn \l__bfret_tmpa_dim
+          { \int_eval:n { ##1 - \l__bfret_xoff_int } \l__bfret_w_dim }
+        \bool_if:nTF
+          { \int_compare_p:nNn {##1} = { \l__bfret_xoff_int } && \bool_if_p:N \l__bfret_open_bool }
+          {
+            \__bfret_seg:nnnnn
+              { \l__bfret_tmpa_dim } { - \l__bfret_hh_dim }
+              { \l__bfret_tmpa_dim } { \l__bfret_hh_dim }
+              { line~width = 3pt , line~cap = butt }
+          }
+          {
+            \__bfret_seg:nnnnn
+              { \l__bfret_tmpa_dim } { - \l__bfret_hh_dim }
+              { \l__bfret_tmpa_dim } { \l__bfret_hh_dim }
+              { line~width = 0.6pt }
+          }
+      }
+  }
+\cs_new_protected:Npn \__bfret_draw_strings:
+  {
+    \int_step_inline:nn { 5 }
+      {
+        \bool_if:nT
+          { \int_compare_p:nNn {##1} < { 5 } || \int_compare_p:nNn { \l__bfret_last_int } > { 4 } }
+          {
+            \dim_set:Nn \l__bfret_tmpb_dim
+              {
+                \bool_if:nTF
+                  { \int_compare_p:nNn {##1} = { 5 } && \int_compare_p:nNn { \l__bfret_first_int } < { 6 } }
+                  { \int_eval:n { 5 - \l__bfret_xoff_int } \l__bfret_w_dim - 0.5 \l__bfret_w_dim }
+                  { \l__bfret_left_dim }
+              }
+            \__bfret_seg:nnnnn
+              { \l__bfret_tmpb_dim } { \__bfret_ypos:n {##1} }
+              { \l__bfret_right_dim } { \__bfret_ypos:n {##1} }
+              { line~width = \clist_item:Nn \c__bfret_stringwidth_clist {##1} }
+          }
+      }
+  }
+\cs_new_protected:Npn \__bfret_label:
+  {
+    \tl_use:N \l__bfret_notefont_tl
+    \clist_if_in:NVTF \c__bfret_natural_clist \l__bfret_tmpc_int
+      {
+        \__bfret_fs:n { \l__bfret_fsa_dim }
+        \seq_item:Nn \c__bfret_sharp_seq { \l__bfret_tmpc_int + 1 }
+      }
+      {
+        \int_case:nn { \l__bfret_acc_int }
+          {
+            { 1 }
+              {
+                \__bfret_fs:n { \l__bfret_fsa_dim }
+                \seq_item:Nn \c__bfret_sharp_seq { \l__bfret_tmpc_int + 1 }
+              }
+            { 2 }
+              {
+                \__bfret_fs:n { \l__bfret_fsa_dim }
+                \seq_item:Nn \c__bfret_flat_seq { \l__bfret_tmpc_int + 1 }
+              }
+            { 3 }
+              {
+                \__bfret_fs:n { \l__bfret_fsb_dim }
+                \shortstack [ c ]
+                  {
+                    \seq_item:Nn \c__bfret_sharp_seq { \l__bfret_tmpc_int + 1 } \\
+                    \seq_item:Nn \c__bfret_flat_seq { \l__bfret_tmpc_int + 1 }
+                  }
+              }
+          }
+      }
+  }
+\cs_new_protected:Npn \__bfret_disc:nn #1#2
+  {
+    \__bfret_valid:nnT {#1} {#2}
+      {
+        \dim_set:Nn \l__bfret_xa_dim { \__bfret_xpos:n {#2} }
+        \dim_set:Nn \l__bfret_ya_dim { \__bfret_ypos:n {#1} }
+        \int_set:Nn \l__bfret_tmpc_int { \__bfret_pc:nn {#1} {#2} }
+        \prop_get:NnNTF \l__bfret_paint_prop { #1 , #2 } \l__bfret_tmpa_tl
+          {
+            \tl_set:Nx \l__bfret_col_tl { \__bfret_color:n { \l__bfret_tmpa_tl } }
+            \node
+              [ circle , draw = black , fill = \l__bfret_col_tl , line~width = 0.6pt ,
+                inner~sep = 0pt , minimum~size = \l__bfret_d_dim , text = black ]
+              at ( \l__bfret_xa_dim , \l__bfret_ya_dim )
+              { \__bfret_label: } ;
+          }
+          {
+            \bool_lazy_and:nnTF
+              { \bool_if_p:N \l__bfret_focus_bool }
+              { ! \prop_if_empty_p:N \l__bfret_paint_prop }
+              {
+                \node
+                  [ circle , draw = black!30 , fill = white , line~width = 0.5pt ,
+                    inner~sep = 0pt , minimum~size = \l__bfret_d_dim , text = black!40 ]
+                  at ( \l__bfret_xa_dim , \l__bfret_ya_dim )
+                  { \__bfret_label: } ;
+              }
+              {
+                \node
+                  [ circle , draw = black , fill = white , line~width = 0.5pt ,
+                    inner~sep = 0pt , minimum~size = \l__bfret_d_dim , text = black ]
+                  at ( \l__bfret_xa_dim , \l__bfret_ya_dim )
+                  { \__bfret_label: } ;
+              }
+          }
+      }
+  }
+\cs_new_protected:Npn \__bfret_draw_discs:
+  {
+    \int_step_inline:nn { 5 }
+      {
+        \int_step_inline:nnn { \l__bfret_first_int } { \l__bfret_last_int }
+          { \__bfret_disc:nn { ##1 } { ####1 } }
+      }
+  }
+\cs_new_protected:Npn \__bfret_draw_labels:
+  {
+    \bool_if:NT \l__bfret_slabels_bool
+      {
+        \int_step_inline:nn { 5 }
+          {
+            \dim_set:Nn \l__bfret_xa_dim
+              { ( \l__bfret_left_dim - 4pt ) * \l__bfret_dir_int }
+            \dim_set:Nn \l__bfret_ya_dim { \__bfret_ypos:n {##1} }
+            \node
+              [ anchor = \bool_if:NTF \l__bfret_lefty_bool { west } { east } ,
+                inner~sep = 0pt , text = black ]
+              at ( \l__bfret_xa_dim , \l__bfret_ya_dim )
+              { \sffamily \footnotesize ##1 } ;
+          }
+      }
+  }
+\cs_new_protected:Npn \__bfret_draw_frettrack:
+  {
+    \dim_set:Nn \l__bfret_ybot_dim { - \l__bfret_hh_dim }
+    \bool_if:NT \l__bfret_fnumbers_bool
+      {
+        \dim_sub:Nn \l__bfret_ybot_dim { 9pt }
+        \int_step_inline:nnn { \int_max:nn { \l__bfret_first_int } { 1 } } { \l__bfret_last_int }
+          {
+            \dim_set:Nn \l__bfret_xa_dim { \__bfret_xpos:n {##1} }
+            \node [ inner~sep = 0pt , text = black ]
+              at ( \l__bfret_xa_dim , \l__bfret_ybot_dim )
+              { \sffamily \footnotesize ##1 } ;
+          }
+      }
+    \bool_if:NT \l__bfret_markers_bool
+      {
+        \dim_sub:Nn \l__bfret_ybot_dim { 9pt }
+        \clist_map_inline:Nn \c__bfret_markers_clist
+          {
+            \bool_if:nT
+              {
+                \int_compare_p:nNn {##1} > { \l__bfret_first_int - 1 } &&
+                \int_compare_p:nNn {##1} < { \l__bfret_last_int + 1 }
+              }
+              {
+                \dim_set:Nn \l__bfret_xa_dim { \__bfret_xpos:n {##1} }
+                \int_compare:nTF { \int_mod:nn {##1} { 12 } = 0 }
+                  {
+                    \dim_set:Nn \l__bfret_xb_dim { \l__bfret_xa_dim - 3pt }
+                    \fill ( \l__bfret_xb_dim , \l__bfret_ybot_dim ) circle ( 1.8pt ) ;
+                    \dim_set:Nn \l__bfret_xb_dim { \l__bfret_xa_dim + 3pt }
+                    \fill ( \l__bfret_xb_dim , \l__bfret_ybot_dim ) circle ( 1.8pt ) ;
+                  }
+                  { \fill ( \l__bfret_xa_dim , \l__bfret_ybot_dim ) circle ( 1.8pt ) ; }
+              }
+          }
+      }
+  }
+\cs_new_protected:Npn \__bfret_legend_item:nn #1#2
+  {
+    \tl_set:Nx \l__bfret_col_tl { \__bfret_color:n {#1} }
+    \node
+      [ circle , draw = black , fill = \l__bfret_col_tl , line~width = 0.6pt ,
+        inner~sep = 0pt , minimum~size = 10pt , anchor = west ]
+      ( bfret-lc ) at ( bfret-legpos ) { } ;
+    \node
+      [ anchor = west , inner~xsep = 4pt , inner~ysep = 0pt , text = black ]
+      ( bfret-lt ) at ( bfret-lc.east ) { \sffamily \footnotesize #2 } ;
+    \coordinate ( bfret-legpos ) at ( $ ( bfret-lt.east ) + ( 12pt , 0pt ) $ ) ;
+  }
+\cs_new_protected:Npn \__bfret_draw_legend:
+  {
+    \seq_if_empty:NF \l__bfret_legend_seq
+      {
+        \dim_sub:Nn \l__bfret_ybot_dim { 14pt }
+        \dim_set:Nn \l__bfret_xa_dim
+          { \bool_if:NTF \l__bfret_lefty_bool { - \l__bfret_right_dim } { \l__bfret_left_dim } }
+        \coordinate ( bfret-legpos ) at ( \l__bfret_xa_dim , \l__bfret_ybot_dim ) ;
+        \seq_map_inline:Nn \l__bfret_legend_seq { \__bfret_legend_item:nn ##1 }
+      }
+  }
+\cs_new_protected:Npn \__bfret_draw_title:
+  {
+    \tl_if_blank:VF \l__bfret_title_tl
+      {
+        \dim_set:Nn \l__bfret_xa_dim
+          { ( \l__bfret_left_dim + \l__bfret_right_dim ) / 2 * \l__bfret_dir_int }
+        \dim_set:Nn \l__bfret_ya_dim { \l__bfret_hh_dim + 6pt }
+        \node [ anchor = south , inner~sep = 0pt , text = black ]
+          at ( \l__bfret_xa_dim , \l__bfret_ya_dim )
+          { \sffamily \bfseries \large \l__bfret_title_tl } ;
+      }
+  }
+%    \end{macrocode}
+%
+% \subsubsection{The banjofret environment}
+%
+%    \begin{macrocode}
+\cs_new_protected:Npn \__bfret_begin:n #1
+  {
+    \prop_clear:N \l__bfret_paint_prop
+    \seq_clear:N \l__bfret_legend_seq
+    \bool_set_true:N \l__bfret_inenv_bool
+    \keys_set:nn { banjofret } {#1}
+    \__bfret_parse_tuning:
+    \__bfret_setup_geometry:
+  }
+\cs_new_protected:Npn \__bfret_end:
+  {
+    \par \medskip \noindent \hfil
+    \begin{tikzpicture}
+      \__bfret_draw_title:
+      \__bfret_seg:nnnnn
+        { \l__bfret_left_dim } { \l__bfret_hh_dim }
+        { \l__bfret_right_dim } { \l__bfret_hh_dim } { line~width = 0.8pt }
+      \__bfret_seg:nnnnn
+        { \l__bfret_left_dim } { - \l__bfret_hh_dim }
+        { \l__bfret_right_dim } { - \l__bfret_hh_dim } { line~width = 0.8pt }
+      \__bfret_draw_fretlines:
+      \__bfret_draw_strings:
+      \__bfret_draw_discs:
+      \__bfret_draw_labels:
+      \__bfret_draw_frettrack:
+      \__bfret_draw_legend:
+    \end{tikzpicture}
+    \hfil \par \medskip
+  }
+\NewDocumentEnvironment { banjofret } { O{} }
+  { \__bfret_begin:n {#1} }
+  { \__bfret_end: }
+%</package>
+%    \end{macrocode}
+%
+% \Finale
+\endinput

@@ -1,0 +1,36 @@
+\documentclass{article}
+\input{regression-test}
+\usepackage{banjofret}
+\ExplSyntaxOn
+% helpers: print the pitch class of a note name / of a position
+\NewDocumentCommand \TestNote { m }
+  {
+    \__bfret_note_to_pc:nN {#1} \l__bfret_tmpc_int
+    \typeout { #1 ~ -> ~ \int_use:N \l__bfret_tmpc_int }
+  }
+\NewDocumentCommand \TestPos { m m }
+  { \typeout { (#1,#2) ~ -> ~ \__bfret_pc:nn {#1} {#2} } }
+\NewDocumentCommand \TestColor { m }
+  { \typeout { #1 ~ -> ~ \__bfret_color:n {#1} } }
+\NewDocumentCommand \TestValid { m m }
+  { \typeout { (#1,#2) ~ valid? ~ \__bfret_valid:nnTF {#1}{#2}{yes}{no} } }
+\NewDocumentCommand \TestParseTuning { } { \__bfret_parse_tuning: }
+\ExplSyntaxOff
+\begin{document}
+\START
+\TEST{note names to pitch classes}{%
+  \TestNote{C}\TestNote{Cs}\TestNote{Db}\TestNote{D}\TestNote{F#}\TestNote{Gb}%
+  \TestNote{A}\TestNote{Bb}\TestNote{B}\TestNote{Cb}%
+}
+\TEST{default tuning: positions to pitch classes}{%
+  \TestParseTuning
+  \TestPos{1}{0}\TestPos{2}{0}\TestPos{3}{0}\TestPos{4}{0}\TestPos{5}{5}%
+  \TestPos{3}{5}\TestPos{2}{1}\TestPos{5}{6}\TestPos{5}{7}\TestPos{1}{24}%
+}
+\TEST{position validity}{%
+  \TestValid{3}{5}\TestValid{5}{4}\TestValid{5}{5}\TestValid{6}{0}\TestValid{1}{25}%
+}
+\TEST{colour resolution}{%
+  \TestColor{blue}\TestColor{root}\TestColor{red!30}\TestColor{bfamber}%
+}
+\END
